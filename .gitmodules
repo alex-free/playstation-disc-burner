@@ -1,0 +1,21 @@
+[submodule "pled"]
+	path = pled
+	url = https://github.com/alex-free/pled
+[submodule "esrtool-legacy"]
+	path = esrtool-legacy
+	url = https://github.com/ali-raheem/esrtool-legacy
+[submodule "p7zip"]
+	path = p7zip
+	url = https://github.com/p7zip-project/p7zip
+[submodule "cdrtools-pled"]
+	path = cdrtools-pled
+	url = https://github.com/alex-free/cdrtools-pled
+[submodule "cdrdao-pled"]
+	path = cdrdao-pled
+	url = https://github.com/alex-free/cdrdao-pled
+[submodule "psx80mp"]
+	path = psx80mp
+	url = https://github.com/alex-free/psx80mp
+[submodule "libcrypt-patcher"]
+	path = libcrypt-patcher
+	url = https://github.com/alex-free/libcrypt-patcher

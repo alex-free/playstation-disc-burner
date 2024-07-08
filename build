@@ -1,0 +1,98 @@
+#!/bin/bash
+
+program=playstation-disc-burner
+version=v1.0
+arch=$(uname -m)
+release=$program-$version-$arch
+set -e
+cd "$(dirname "$0")"
+
+# PSDB
+if [ "$1" == "script" ]; then
+    if [ -d "$release" ]; then
+        cp -v psdb $release
+    else
+        echo "Error: $release doesn't exist, run build with no arguemnts before updating the script in the release directory"
+    fi
+    
+    exit 0
+fi
+
+rm -rf $release "$release".zip
+if [ "$1" == "clean" ]; then
+    exit 0
+fi
+
+# When this script exits, automatically delete the temp directory.
+cleanup() 
+{ 
+    if [[ -e "$tmp" ]]; then
+        echo "Clearing temp files..."  
+        rm -r "$tmp"   
+    fi
+}
+trap cleanup EXIT
+
+# Print out any uncaught errors.
+err() 
+{	
+    echo -e "\nUncaught error in $0, line number: $BASH_LINENO" >&2
+    exit 1
+}
+trap err ERR
+
+# Put temp directory in /tmp (or whatever the OS prefers)
+tmp=$(mktemp -d --tmpdir psdb.XXX)
+
+mkdir -p $release/bin
+mkdir $release/licenses
+cp -r images psdb esr.md libcrypt.md master-disc.md psx80mp.md readme.md $release
+cp unlicense.md $release/licenses/psdb.md
+
+# PSX80MP
+cp -r psx80mp $tmp
+make -C $tmp/psx80mp linux-x86_64
+cp $tmp/psx80mp/psx80mp $release/bin
+cp $tmp/psx80mp/license.txt $release/licenses/psx80mp.md
+
+# LibCrypt Patcher
+cp -r libcrypt-patcher $tmp
+make -C $tmp/libcrypt-patcher linux-x86_64
+cp $tmp/libcrypt-patcher/build/lcp.x86_64 $release/bin/libcrypt-patcher
+cp $tmp/libcrypt-patcher/license.md $release/licenses/libcrypt-patcher.md
+
+# CDRDAO
+cdrdao-pled/build
+shopt -s extglob
+cp -r cdrdao-pled/cdrdao-c2b0ff2-pled-1.0.5-linux-x86_64/!(*.md) $release/bin
+shopt -u extglob
+cp cdrdao-pled/cdrdao/COPYING $release/licenses/cdrdao.md
+cdrdao-pled/build clean
+
+# CDRecord
+cdrtools-pled/build
+shopt -s extglob
+cp -r cdrtools-pled/cdrtools-v3.02a09-pled-1.0.1-linux-x86_64/!(*.md) $release/bin
+shopt -u extglob
+cp cdrtools-pled/cdrtools/GPL-2.0.txt $release/bin/licenses/cdrecord-gpl2.md
+cp cdrtools-pled/cdrtools/CDDL.Schily.txt $release/bin/licenses/cdrecord-cddl.md
+cdrtools-pled/build clean
+
+# ESRTool-Legacy
+cp -r esrtool-legacy $tmp
+make -C $tmp/esrtool-legacy
+cp $tmp/esrtool-legacy/esrtool $release/bin
+pled/pled $release/bin/esrtool $release/bin
+cp esrtool-legacy/COPYING $release/licenses/esrtool-legacy.md
+
+# PS2 Master Disc Patcher
+cp ps2-master-disc-patcher-v1.0.5-linux-x86_64-static/ps2master $release/bin
+
+# P7zip
+cp -r p7zip $tmp
+make -C $tmp/p7zip/CPP/7zip/Bundles/Alone -f makefile.gcc
+pled/pled $tmp/p7zip/CPP/7zip/Bundles/Alone/_o/bin/7za $program-$version-$arch/bin
+cp p7zip/DOC/License.txt $release/licenses/p7zip.md
+
+chmod -R 777 $release
+zip -r "$release".zip $release
