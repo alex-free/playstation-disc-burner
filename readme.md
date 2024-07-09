@@ -14,7 +14,7 @@ This is an open source tool kit that allows you to burn PS2 and PS1 backup discs
 
 *   Support for compressed files. If PSDB finds a file ending in `.iso`, `.ISO`, `.cue`, `.CUE`, `.BIN`, or `.bin` in a compressed archive format that p7zip supports it will automatically be extracted and configured for all features.
 
-*   Burn PS2 and PS1 games to CD-R or DVD-R as-is (no patching). PDB correctly burns EDC/ECC protected PS1 games by default.
+*   Burn PS2 and PS1 games to CD-R or DVD-R as-is (no patching). PSDB correctly burns EDC/ECC protected PS1 games by default.
 
 *   Save the desired burn speed to a configuration file, which can be set with a PSDB option.
 
@@ -84,6 +84,6 @@ PSDB makes use of the following programs listed below, which have their own lice
 
 *   [ESRTool-legacy](https://github.com/ali-raheem/esrtool-legacy) (GPL v2, see the file `licenses/esrtool-legacy.md`).
 
-*   [Master Disc Patcher](https://github.com/alex-free/cdrdao-pled) (by MottZilla, closed source currently).
+*   [PS2 Master Disc Patcher](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3#post-393254) (by MottZilla, closed source currently).
 
 *   [P7zip-zstd](https://github.com/p7zip-project/p7zip) (GNU LGPL with unRAR license restriction, BSD-3 Clause, and Public Domain), see `licenses/p7zip.md`.

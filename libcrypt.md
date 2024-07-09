@@ -1,14 +1,8 @@
 # [PlayStation Disc Burner](readme.md) -> LibCrypt Patch
 
-PSDB menu options: `Add LibCrypt patch`, `Add LibCrypt patch and burn`.
+The PSDB menu options `Add LibCrypt patch` and `Add LibCrypt patch and burn` create a new patched folder of BIN/CUE files, sharing the same name as the input file but with `_LCP` appended. For CD BIN/CUE files found in a compressed archive, the patched folder will be created in the same folder of the compressed archive. If the CD BIN/CUE files are not from a compressed archive, the new patched folder will instead be created in the parent folder of the given input BIN or CUE file. The patcher used is [LibCrypt Patcher](https://github.com/alex-free/libcrypt-patcher).
 
-Patcher used: LibCrypt Patcher ([Github page](https://github.com/alex-free/libcrypt-patcher)).
-
-LibCrypt is an additional copy protection found in some PAL region PS1 games. It is the only additional copy protection type for PS1 that can trigger on MechaPwn'd PS2 consoles. LibCrypt patching removes the protection.
-
-If the input was a CD BIN or CUE file a new directory will be created in the same directory as the input file, ending with `_LCP` containing the LibCrypt patched version of the CD image.
-
-If a compressed file containing supported input files was the input this option will extract the archive to a folder with the same filename, in the same directory of the compressed archive.
+LibCrypt is an additional copy protection found in some PAL region PS1 games that requires special burning software to replicate. LibCrypt patching removes the protection and allows any burning software to correctly burn a working CD-R with the protection removed.
 
 ## Example: Spyro: Year Of The Dragon (PS1, Europe) + `Patch LibCrypt` Option
 
