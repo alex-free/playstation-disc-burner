@@ -31,7 +31,7 @@ This is an open source tool kit that allows you to burn PS2 and PS1 backup discs
 
 ### v1.0 (7/8/2024)
 
-*   [playstation-disc-burner-v1.0-x86_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0/playstation-disc-burner-v1.0-x86_64.zip) _Portable Release For x86\_64 Linux_.
+*   [playstation-disc-burner-v1.0-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0/playstation-disc-burner-v1.0-x86_64.zip) _Portable Release For x86\_64 Linux_.
 
 Changes:
 
