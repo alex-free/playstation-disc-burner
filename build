@@ -41,6 +41,12 @@ err()
 }
 trap err ERR
 
+if command -v apt > /dev/null 2>&1; then
+    echo "APT package manager detected for build dependencies, sudo is required to install them:"
+    sudo apt update
+    sudo apt install --yes build-essential cmake patchelf zip
+fi
+
 # Put temp directory in /tmp (or whatever the OS prefers)
 tmp=$(mktemp -d --tmpdir psdb.XXX)
 
