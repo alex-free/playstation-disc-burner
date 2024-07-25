@@ -19,3 +19,6 @@
 [submodule "libcrypt-patcher"]
 	path = libcrypt-patcher
 	url = https://github.com/alex-free/libcrypt-patcher
+[submodule "edcre"]
+	path = edcre
+	url = https://github.com/alex-free/edcre
