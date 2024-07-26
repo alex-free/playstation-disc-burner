@@ -6,6 +6,8 @@
 
 3) `./build`
 
+The build script currently targets i686 and x86_64 Linux.
+
 All build dependencies will be downloaded (if you have the APT package manager, so Ubuntu/Debian/derivatives like Pop!OS). Feel free to open a [pull request](https://github.com/alex-free/playstation-disc-burner/pulls) to add support for other package managers/distributions.
 
 All software PSDB depends on will be compiled and then made portable by my [PLED](https://github.com/alex-free/pled) tool.
