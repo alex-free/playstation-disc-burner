@@ -18,7 +18,7 @@ Changes:
 
 *   Updated burn functions to check for if the user is already root before executing either the `cdrdao` or `cdrecord` executable with `sudo`.
 
-*   Added my [EDCRE](https://github.com/alex-free/edcre). EDC/ECC is now corrected if it is found invalid in any sectors after the system volume descriptor, where game data lives. Sectors before the system volume descriptor are left untouched as invalid EDC/ECC in those sectors are used in EDC protected PS1 games.
+*   Added my [EDCRE](https://github.com/alex-free/edcre) patcher. EDC/ECC is now corrected if it is found invalid in any sectors after the system volume descriptor, where game data lives. Sectors before the system volume descriptor are left untouched as invalid EDC/ECC in those sectors are used in EDC protected PS1 games.
 
 ## v1.0 (7/8/2024)
 

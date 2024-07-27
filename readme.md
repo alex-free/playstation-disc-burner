@@ -24,11 +24,11 @@ Additional features:
 
 *   Corrects EDC and ECC starting at the system volume descriptor of the data track for CD images. Any translation patched bin file or otherwise which doesn't contain correct EDC/ECC in the actual game data will be corrected. EDC protected PS1 games continue to burn correctly with this default, as those games are looking at sectors that are before the volume descriptor.
 
-*   Save the desired burn speed to a configuration file.
+*   Set the desired burn speed to a configuration file.
 
-*   Save the desired burner (i.e. `/dev/sr0` is the default for Linux) to a configuration file.
+*   Set the desired burner (i.e. `/dev/sr0` is the default for Linux) to a configuration file.
 
-| [GitHub](https://github.com/alex-free/playstation-disc-burner) | [Homepage](https://alex-free.github.io/psdb) |
+| [GitHub](https://github.com/alex-free/playstation-disc-burner) | [Homepage](https://alex-free.github.io/psdb) | [PSX-Place Thread](https://www.psx-place.com/threads/psdb-patch-esr-master-disc-psx80mp-libcrypt-etc-burn-ps2-and-ps1-discs.44156) | [GBATemp Thread](https://gbatemp.net/threads/playstation-disc-burner-psdb-patch-esr-master-disc-psx80mp-libcrypt-etc-burn-ps2-and-ps1-discs.658102) |
 
 ## Table Of Contents
 
@@ -50,6 +50,8 @@ Additional features:
 Changes:
 
 *   Fixed LibCrypt patcher command not found issue.
+
+[Previous versions](changelog.md)
 
 ## Usage
 
