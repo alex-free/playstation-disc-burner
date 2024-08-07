@@ -1,5 +1,17 @@
 # [PlayStation Disc Burner](readme.md) -> Changelog
 
+## v1.0.2 (7/26/2024)
+
+*   [playstation-disc-burner-v1.0.2-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.2/playstation-disc-burner-v1.0.2-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.
+
+*   [playstation-disc-burner-v1.0.2-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.2/playstation-disc-burner-v1.0.2-x86_64.zip) _Portable Release For x86\_64 Linux_.
+
+---------------------------
+
+Changes:
+
+*   Fixed LibCrypt patcher command not found issue.
+
 ## v1.0.1 (7/25/2024)
 
 *   [playstation-disc-burner-v1.0.1-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.1/playstation-disc-burner-v1.0.1-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.

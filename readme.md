@@ -24,7 +24,7 @@ Additional features:
 
 *   Corrects EDC and ECC starting at the system volume descriptor of the data track for CD images. Any translation patched bin file or otherwise which doesn't contain correct EDC/ECC in the actual game data will be corrected. EDC protected PS1 games continue to burn correctly with this default, as those games are looking at sectors that are before the volume descriptor.
 
-*   Set the desired burn speed to a configuration file.
+*   Set the desired burn speed to a configuration file, this can be set for different speeds depending on if your burning a CD or a DVD.
 
 *   Set the desired burner (i.e. `/dev/sr0` is the default for Linux) to a configuration file.
 
@@ -39,29 +39,39 @@ Additional features:
 
 ## Downloads
 
-### v1.0.2 (7/26/2024)
+### v1.0.3 (8/7/2024)
 
-*   [playstation-disc-burner-v1.0.2-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.2/playstation-disc-burner-v1.0.2-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.
+*   [playstation-disc-burner-v1.0.3-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.
 
-*   [playstation-disc-burner-v1.0.2-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.2/playstation-disc-burner-v1.0.2-x86_64.zip) _Portable Release For x86\_64 Linux_.
+*   [playstation-disc-burner-v1.0.3-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-x86_64.zip) _Portable Release For x86\_64 Linux_.
 
 ---------------------------
 
 Changes:
 
-*   Fixed LibCrypt patcher command not found issue.
+*   Added ability to set a burn speed for CD and DVDs independently. You can have one speed set for CDs, and another for DVDs.
+
+*   Updated [EDCRE](https://github.com/alex-free/edcre) to version 1.0.8.
+
+*   Added ability to set burn speed with command line arguments (`-cds <cd burn speed>` or `-dvds <dvd burn speed>`) without having to give a valid input file first.
+
+*   Added ability to set the burner with command line arguments (`-b <burner>`) without having to give a valid input file first.
+
+*   Fixed setting burner in the DVD ISO options menu.
 
 [Previous versions](changelog.md)
 
 ## Usage
 
-`PSDB requires 1 argument.`
-
-`Usage:`
-
 `psdb <input file>`
 
-`<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files)`
+`<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files).`
+
+`psdb -cds <cd burn speed>      Set burn speed for CDs to <cd burn speed> and exit.`
+
+`psdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.`
+
+`psdb -b <burner>      Set burner to <burner> (i.e. "/dev/sr0").`
 
 1) Download and unzip the latest release.
 

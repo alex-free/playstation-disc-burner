@@ -1,21 +1,19 @@
 #!/bin/bash
-version="v1.0.1"
+version="v1.0.3"
 
 #set -e
 
 change_burner() 
 {
-
     echo "Enter the cd burner devname, i.e default for linux is /dev/sr0:"
     read -p "Burner:" burner
 
     echo "$burner" > config/burner.txt
 }
 
-change_burn_speed() 
+change_cd_burn_speed() 
 {
-
-    echo "Enter a number for the speed to burn your CD-R. If your burner does not support the speed you provide the closest available speed will be used instead."
+    echo "Enter a number for the speed to burn CDs at. If your burner does not support the speed you provide the closest available speed will be used instead."
     read -p "Set burn speed:" speed
 
     while [[ ! "$speed" =~ ^[0-9]+$ ]]; do
@@ -23,14 +21,59 @@ change_burn_speed()
         read -p "Set burn speed:" speed
     done
 
-    echo "$speed" > config/burn-speed.txt
+    echo "$speed" > config/cd-burn-speed.txt
+}
+
+change_dvd_burn_speed() 
+{
+    echo "Enter a number for the speed to burn DVDs at. If your burner does not support the speed you provide the closest available speed will be used instead."
+    read -p "Set burn speed:" speed
+
+    while [[ ! "$speed" =~ ^[0-9]+$ ]]; do
+        echo "${speed} is not a number, try again"
+        read -p "Set burn speed:" speed
+    done
+
+    echo "$speed" > config/dvd-burn-speed.txt
 }
 
 echo "PlayStation Disc Burner (PSDB) $version By Alex Free"
 
-if [ $# -ne 1 ]; then
-    echo -e "PSDB requires 1 argument.\n\nUsage:\n\npsdb <input file>\n\n<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files)\n"
+if [ $# -ne 1 ] && [ $# -ne 2 ]; then
+    echo -e "Error: PSDB requires 1 or 2 arguments.\n\nUsage:\n\npsdb <input file>\n\n<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files).\n\npsdb -cds <cd burn speed>      Set burn speed for CDs to <cd burn speed> and exit.\n\npsdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.\n\npsdb -b <burner>      Set burner to <burner> (i.e. \"/dev/sr0\")."
     exit 1
+fi
+
+if [ $# -eq 2 ]; then
+    if [ "$1" == "-cds" ]; then
+        if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+            echo "Error: specified burn speed: \"$2\" is not a number"
+            exit 1
+        fi
+
+        mkdir -p "$(dirname "$0")"/config
+        echo "$2" > "$(dirname "$0")"/config/cd-burn-speed.txt
+        echo "CD burn speed set to \"$2"\"
+        exit 0
+    elif [ "$1" == "-dvds" ]; then
+        if [[ ! "$2" =~ ^[0-9]+$ ]]; then
+            echo "Error: specified burn speed: \"$2\" is not a number"
+            exit 1
+        fi
+
+        mkdir -p "$(dirname "$0")"/config
+        echo "$2" > "$(dirname "$0")"/config/dvd-burn-speed.txt
+        echo "DVD burn speed set to \"$2"\"
+        exit 0
+    elif [ "$1" == "-b" ]; then
+        mkdir -p "$(dirname "$0")"/config
+        echo "$2" > "$(dirname "$0")"/config/burner.txt
+        echo "Burner set to \"$2"\"
+        exit 0 
+    else
+        echo "Error: 2 arguemnts were given, and the first argument was niether -cds or -dvds"
+        exit 1
+    fi
 fi
 
 if [ ! -f "$1" ]; then
@@ -52,10 +95,16 @@ PATH="${PWD}/bin"${PATH:+:${PATH}}
 # which 7za
 # which edcre
 
-if [ ! -f "config/burn-speed.txt" ]; then
+if [ ! -f "config/cd-burn-speed.txt" ]; then
     mkdir -p config
-    echo "Burn speed config not found, setting to default speed of 1x"
-    echo 1 > config/burn-speed.txt
+    echo "CD burn speed config not found, setting to default speed of 1x"
+    echo 1 > config/cd-burn-speed.txt
+fi
+
+if [ ! -f "config/dvd-burn-speed.txt" ]; then
+    mkdir -p config
+    echo "DVD burn speed config not found, setting to default speed of 1x"
+    echo 1 > config/dvd-burn-speed.txt
 fi
 
 if [ ! -f "config/burner.txt" ]; then
@@ -67,8 +116,8 @@ fi
 burner=$(cat config/burner.txt)
 echo -e "\nBurner: $burner"
 
-speed=$(cat config/burn-speed.txt)
-echo -e "\nBurn speed: "$speed"x"
+cd_burn_speed=$(cat config/cd-burn-speed.txt)
+dvd_burn_speed=$(cat config/dvd-burn-speed.txt)
 
 # Put temp directory in /tmp (or whatever the OS prefers)
 tmp=$(mktemp -d --tmpdir ps2db.XXX)
@@ -166,12 +215,14 @@ fi
 
 if [ -z "$data_track" ]; then
 
+echo -e "(DVD burn speed is set to "$dvd_burn_speed"x)\n"
+
 echo =====================================
 echo DVD ISO Options
 echo =====================================
 
 PS3="Enter an option number: "
-    select opt in Burn "Add ESR patch" "Add ESR patch and burn" "Add Master Disc patch"  "Add Master Disc patch and burn" "Change Burner" "Change burn speed" Quit; do    
+    select opt in Burn "Add ESR patch" "Add ESR patch and burn" "Add Master Disc patch"  "Add Master Disc patch and burn" "Change burner" "Change burn speed" Quit; do    
     case $opt in
         "Burn")
             mode=2
@@ -198,7 +249,7 @@ PS3="Enter an option number: "
             exit 0
             ;;
         "Change burn speed")
-            change_burn_speed
+            change_dvd_burn_speed
             exit 0
             ;;
         Quit)
@@ -211,6 +262,8 @@ PS3="Enter an option number: "
 done
 
 else # CD
+
+echo -e "(CD burn speed is set to "$cd_burn_speed"x)\n"
 
 echo =====================================
 echo CD BIN/CUE Options
@@ -252,7 +305,7 @@ PS3="Enter an option number: "
             exit 0
             ;;
         "Change burn speed")
-            change_burn_speed
+            change_cd_burn_speed
             exit 0
             ;;
         Quit)
@@ -313,16 +366,16 @@ if [ "$mode" == "2" ]; then # burn as-is
         if [[ $multiple_files -gt 0 ]]; then # Did come from compressed archive
             if [ "$EUID" != 0 ]; then
                 echo "Info: Root privilages are required to ensure success of burn"
-                sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$speed --eject "$output_dir"/"$output_base_name_without_extension"."$input_extension"
+                sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"."$input_extension"
             else
-               cdrecord -v dev="$burner" --speed=$speed --eject "$output_dir"/"$output_base_name_without_extension"."$input_extension"
+               cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"."$input_extension"
             fi
         else # straight ISO
             if [ "$EUID" != 0 ]; then
                 echo "Info: Root privilages are required to ensure success of burn"
-                sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$speed --eject "$1"
+                sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$1"
             else
-                cdrecord -v dev="$burner" --speed=$speed --eject "$1"
+                cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$1"
             fi
         fi
     else # CD
@@ -335,9 +388,9 @@ if [ "$mode" == "2" ]; then # burn as-is
         
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
-            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
         else
-            cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
         fi
     fi
 
@@ -345,26 +398,26 @@ if [ "$mode" == "2" ]; then # burn as-is
 elif [ "$mode" == "4" ]; then # burn esr
     if [ "$EUID" != 0 ]; then
         echo "Info: Root privilages are required to ensure success of burn"
-        sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$speed --eject "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
+        sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
     else
-       cdrecord -v dev="$burner" --speed=$speed --eject "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
+       cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
     fi
 elif [ "$mode" == "6" ]; then # burn master disc    
     if [ -z "$data_track" ]; then # Master Disc is DVD
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
-            sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$speed --eject "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
+            sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
         else
-            cdrecord -v dev="$burner" --speed=$speed --eject "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
+            cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
         fi
     else # Master Disc is CD
         cd "$output_parent_directory"/"$output_target_directory"_MD # CDRDAO is incapable of finding bin files relative to the cue when not in the same working directory
 
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
-            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
         else
-            cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
         fi
     fi
 elif [ "$mode" == "8" ]; then # LibCrypt is CD
@@ -372,9 +425,9 @@ elif [ "$mode" == "8" ]; then # LibCrypt is CD
 
     if [ "$EUID" != 0 ]; then
         echo "Info: Root privilages are required to ensure success of burn"
-        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
     else
-        cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
     fi
 
 elif [ "$mode" == "10" ]; then # PSX80MP is CD
@@ -382,8 +435,8 @@ elif [ "$mode" == "10" ]; then # PSX80MP is CD
 
     if [ "$EUID" != 0 ]; then
         echo "Info: Root privilages are required to ensure success of burn"
-        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
     else
-        cdrdao write --device "$burner" --speed $speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
     fi
 fi
