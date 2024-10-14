@@ -44,6 +44,8 @@ if [ $# -ne 1 ] && [ $# -ne 2 ]; then
     exit 1
 fi
 
+cd "$(dirname "$(readlink -f "$0")")"
+
 if [ $# -eq 2 ]; then
     if [ "$1" == "-cds" ]; then
         if [[ ! "$2" =~ ^[0-9]+$ ]]; then
@@ -51,8 +53,8 @@ if [ $# -eq 2 ]; then
             exit 1
         fi
 
-        mkdir -p "$(dirname "$0")"/config
-        echo "$2" > "$(dirname "$0")"/config/cd-burn-speed.txt
+        mkdir -p config
+        echo "$2" > config/cd-burn-speed.txt
         echo "CD burn speed set to \"$2"\"
         exit 0
     elif [ "$1" == "-dvds" ]; then
@@ -61,13 +63,13 @@ if [ $# -eq 2 ]; then
             exit 1
         fi
 
-        mkdir -p "$(dirname "$0")"/config
-        echo "$2" > "$(dirname "$0")"/config/dvd-burn-speed.txt
+        mkdir -p config
+        echo "$2" > config/dvd-burn-speed.txt
         echo "DVD burn speed set to \"$2"\"
         exit 0
     elif [ "$1" == "-b" ]; then
-        mkdir -p "$(dirname "$0")"/config
-        echo "$2" > "$(dirname "$0")"/config/burner.txt
+        mkdir -p config
+        echo "$2" > config/burner.txt
         echo "Burner set to \"$2"\"
         exit 0 
     else
@@ -81,9 +83,7 @@ if [ ! -f "$1" ]; then
     exit 1
 fi
 
-cd "$(dirname "$0")"
-
-# Now that we are sure we are in the directory of this script, we can add all the self-contained binaries we need to the $PATH used within this script.
+# Now that we are sure we are in the directory of this script because of line 47, we can add all the self-contained binaries we need to the $PATH used within this script.
 PATH="${PWD}/bin"${PATH:+:${PATH}}
 # echo $PATH
 # which cdrdao
