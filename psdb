@@ -44,7 +44,7 @@ if [ $# -ne 1 ] && [ $# -ne 2 ]; then
     exit 1
 fi
 
-cd "$(dirname "$(readlink -f "$0")")"
+SCRIPTDIR="$(dirname "$(readlink -f "$0")")"
 
 if [ $# -eq 2 ]; then
     if [ "$1" == "-cds" ]; then
@@ -53,8 +53,8 @@ if [ $# -eq 2 ]; then
             exit 1
         fi
 
-        mkdir -p config
-        echo "$2" > config/cd-burn-speed.txt
+        mkdir -p "$SCRIPTDIR/config"
+        echo "$2" > "$SCRIPTDIR/config/cd-burn-speed.txt"
         echo "CD burn speed set to \"$2"\"
         exit 0
     elif [ "$1" == "-dvds" ]; then
@@ -63,27 +63,30 @@ if [ $# -eq 2 ]; then
             exit 1
         fi
 
-        mkdir -p config
-        echo "$2" > config/dvd-burn-speed.txt
+        mkdir -p "$SCRIPTDIR/config"
+        echo "$2" > "$SCRIPTDIR/config/dvd-burn-speed.txt"
         echo "DVD burn speed set to \"$2"\"
         exit 0
     elif [ "$1" == "-b" ]; then
-        mkdir -p config
-        echo "$2" > config/burner.txt
+        mkdir -p "$SCRIPTDIR/config"
+        echo "$2" > "$SCRIPTDIR/config/burner.txt"
         echo "Burner set to \"$2"\"
         exit 0 
     else
-        echo "Error: 2 arguemnts were given, and the first argument was niether -cds or -dvds"
+        echo "Error: 2 arguments were given, and the first argument was neither -cds nor -dvds"
         exit 1
     fi
 fi
 
 if [ ! -f "$1" ]; then
-    echo "Error: Cant open the file "$1""
+    echo "Error: Can't open the file "$1""
     exit 1
 fi
 
-# Now that we are sure we are in the directory of this script because of line 47, we can add all the self-contained binaries we need to the $PATH used within this script.
+FILEPATH="$(readlink -f "$1")"
+
+cd $SCRIPTDIR
+# Now that we are sure we are in the directory of this script, we can add all the self-contained binaries we need to the $PATH used within this script.
 PATH="${PWD}/bin"${PATH:+:${PATH}}
 # echo $PATH
 # which cdrdao
@@ -140,77 +143,70 @@ err()
 }
 trap err ERR
 
-if [ ! -f "$1" ]; then
-    echo "Error: Can not open file: "$1"\n"
-    exit 1
+output_dir=$(dirname "$FILEPATH")
+
+if file "$FILEPATH" | grep "UDF filesystem data" > /dev/null 2>&1; then
+	output_base_name=$(basename "$FILEPATH")
+	output_base_name_without_extension="${output_base_name%.*}"
+	input_extension="${1##*.}"
+	cp "$FILEPATH" $tmp/"$output_base_name_without_extension"."$input_extension"
+	echo -e "\nWhat do you want to do with \""$FILEPATH"\"?\n"
+elif file "$FILEPATH" | grep -q ": data\|ASCII"; then # ': data' matches bin files, 'ASCII' matches cue files.
+	shopt -s nocaseglob  # Enable case-insensitive globbing
+	cp -rv "$output_dir"/*.{bin,BIN,cue,CUE} "$tmp" > /dev/null 2>&1
+	shopt -u nocaseglob  # Disable case-insensitive globbing
+
+	data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
+	base_data_track=$(basename "$data_track")
+
+	cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
+	base_cue_file=$(basename "$cue_file")
+
+	output_target_directory="${base_cue_file%.*}" # strip extension
+
+	output_parent_directory=""$output_dir"/../" # we were given a BIN or CUE file which is in a directory itself. We want the output one directory above this for consistancy with archived file handling output by this script
+	output_parent_directory_base_name=$(basename "$FILEPATH")
+
+	echo -e "\nWhat do you want to do with \"$base_data_track\"?\n"
 else
-    output_dir=$(dirname "$1")
+	7za e "$FILEPATH" -o$tmp
+	multiple_files=$(ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null | wc -l)
 
-    if file "$1" | grep "UDF filesystem data" > /dev/null 2>&1; then
-        output_base_name=$(basename "$1")
-        output_base_name_without_extension="${output_base_name%.*}"
-        input_extension="${1##*.}"
-        cp "$1" $tmp/"$output_base_name_without_extension"."$input_extension"
-        echo -e "\nWhat do you want to do with \""$1"\"?\n"
-    elif file "$1" | grep -q ": data\|ASCII"; then # ': data' matches bin files, 'ASCII' matches cue files.
-        shopt -s nocaseglob  # Enable case-insensitive globbing
-        cp -rv "$(dirname "$1")"/*.{bin,BIN,cue,CUE} "$tmp" > /dev/null 2>&1
-        shopt -u nocaseglob  # Disable case-insensitive globbing
+	if [[ $multiple_files -gt 1 ]]; then # Got multiple DVD ISOs
+		echo -e "\nError: multiple ISO files found in archive file: $FILEPATH :\n"
+		ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null
+		echo -e "\nOnly one ISO file with extension .iso or .ISO can be in the archive file: $FILEPATH for it to be supported for processing by PS2DB"
+		exit 1
+	elif [[ $multiple_files -eq 0 ]]; then # No ISO/iso files, what about BIN/bin files?
+		multiple_files=$(ls -1a $tmp/*.bin $tmp/*.BIN 2> /dev/null | wc -l)
 
-        data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
-        base_data_track=$(basename "$data_track")
+		if [[ $multiple_files -eq 0 ]]; then # Neither
+			echo "Error: Neither an ISO file with extension .iso or .ISO or a BIN file with .bin or .BIN was found in the root of the given archive file $FILEPATH"
+			exit 1
+		else # Got CD
+			data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
+			base_data_track=$(basename "$data_track")
 
-        cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
-        base_cue_file=$(basename "$cue_file")
+			cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
+			base_cue_file=$(basename "$cue_file")
 
-        output_target_directory="${base_cue_file%.*}" # strip extension
+			output_target_directory="${base_cue_file%.*}" # strip extension
 
-        output_parent_directory=$(dirname "$1")
-        output_parent_directory=""$output_parent_directory"/../" # we were given a BIN or CUE file which is in a directory itself. We want the output one directory above this for consistancy with archived file handling output by this script
-        output_parent_directory_base_name=$(basename "$1")
+			output_parent_directory="$output_dir"
+			output_parent_directory_base_name=$(basename "$FILEPATH")
 
-        echo -e "\nWhat do you want to do with \"$base_data_track\"?\n"
-    else
-        7za e "$1" -o$tmp
-        multiple_files=$(ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null | wc -l)
+			echo -e "\nWhat do you want to do with \"$base_data_track\" (found in \"$FILEPATH\")?\n"
+		fi
+	elif [[ $multiple_files -eq 1 ]]; then # For DVD
+		shopt -s nocaseglob  # Enable case-insensitive globbing
+		temp_iso_file=$(ls -1a  $tmp/*.{ISO,iso})
+		shopt -u nocaseglob  # Disable case-insensitive globbing
 
-        if [[ $multiple_files -gt 1 ]]; then # Got multiple DVD ISOs
-            echo -e "\nError: multiple ISO files found in archive file: $1 :\n"
-            ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null
-            echo -e "\nOnly one ISO file with extension .iso or .ISO can be in the archive file: $1 for it to be supported for prooccessing by PS2DB"
-            exit 1
-        elif [[ $multiple_files -eq 0 ]]; then # No ISO/iso files, what about BIN/bin files?
-            multiple_files=$(ls -1a $tmp/*.bin $tmp/*.BIN 2> /dev/null | wc -l)
-
-            if [[ $multiple_files -eq 0 ]]; then # Neither
-                echo "Error: Neither an ISO file with either extension .iso or .ISO or a BIN file with .bin or .BIN was found in the root of the given archive file $1"
-                exit 1
-            else # Got CD
-                data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
-                base_data_track=$(basename "$data_track")
-
-                cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
-                base_cue_file=$(basename "$cue_file")
-
-                output_target_directory="${base_cue_file%.*}" # strip extension
-
-                output_parent_directory=$(dirname "$1")
-                output_parent_directory_base_name=$(basename "$1")
-
-                echo -e "\nWhat do you want to do with \"$base_data_track\" (found in \"$1\")?\n"
-            fi
-        elif [[ $multiple_files -eq 1 ]]; then # For DVD
-            shopt -s nocaseglob  # Enable case-insensitive globbing
-            temp_iso_file=$(ls -1a  $tmp/*.{ISO,iso})
-            shopt -u nocaseglob  # Disable case-insensitive globbing
-
-            output_base_name=$(basename "$temp_iso_file")
-            output_base_name_without_extension="${output_base_name%.*}"
-            input_extension="${temp_iso_file##*.}"
-            echo -e "\nWhat do you want to do with \"$output_base_name_without_extension.$input_extension\" (found in \"$1\")?\n"
-        fi
-    fi
-
+		output_base_name=$(basename "$temp_iso_file")
+		output_base_name_without_extension="${output_base_name%.*}"
+		input_extension="${temp_iso_file##*.}"
+		echo -e "\nWhat do you want to do with \"$output_base_name_without_extension.$input_extension\" (found in \"$FILEPATH\")?\n"
+	fi
 fi
 
 if [ -z "$data_track" ]; then
@@ -373,17 +369,16 @@ if [ "$mode" == "2" ]; then # burn as-is
         else # straight ISO
             if [ "$EUID" != 0 ]; then
                 echo "Info: Root privilages are required to ensure success of burn"
-                sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$1"
+                sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$FILEPATH"
             else
-                cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$1"
+                cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$FILEPATH"
             fi
         fi
     else # CD
         if [[ $multiple_files -gt 0 ]]; then # Did come from compressed archive
             cd "$output_parent_directory"/"$output_target_directory"
         else
-            burn_dir=$(dirname "$1")
-            cd "$burn_dir"
+            cd "$output_dir"
         fi
         
         if [ "$EUID" != 0 ]; then
