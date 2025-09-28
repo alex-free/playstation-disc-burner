@@ -83,12 +83,12 @@ gcc -v
 g++() {
   g++-13 "$@"
 }
-export -f gcc
+export -f g++
 
 c++() {
   g++-13 "$@"
 }
-export -f cc
+export -f c++
 g++ -v
 
 # Put temp directory in /tmp (or whatever the OS prefers)
