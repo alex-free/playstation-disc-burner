@@ -1,5 +1,25 @@
 # [PlayStation Disc Burner](readme.md) -> Changelog
 
+## v1.0.3 (8/7/2024)
+
+*   [playstation-disc-burner-v1.0.3-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.
+
+*   [playstation-disc-burner-v1.0.3-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-x86_64.zip) _Portable Release For x86\_64 Linux_.
+
+---------------------------
+
+Changes:
+
+*   Added ability to set a burn speed for CD and DVDs independently. You can have one speed set for CDs, and another for DVDs.
+
+*   Updated [EDCRE](https://github.com/alex-free/edcre) to version 1.0.8.
+
+*   Added ability to set burn speed with command line arguments (`-cds <cd burn speed>` or `-dvds <dvd burn speed>`) without having to give a valid input file first.
+
+*   Added ability to set the burner with command line arguments (`-b <burner>`) without having to give a valid input file first.
+
+*   Fixed setting burner in the DVD ISO options menu.
+
 ## v1.0.2 (7/26/2024)
 
 *   [playstation-disc-burner-v1.0.2-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.2/playstation-disc-burner-v1.0.2-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.

@@ -1,6 +1,14 @@
 # [PS2 Master Disc Patcher](readme.md) -> Changelog
 
-### Version 1.0.4 (7/1/2024) (Alex Free)
+## Version 1.0.5 (7/3/2024) (Alex Free)
+
+*   Fixed patching for [Viewtiful Joe](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3#post-356788). Every other edge case for detecting the boot file name has now been accounted for.
+
+----------------------------
+
+Download v1.0.5 from the [PSX-Place Thread](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3)
+
+## Version 1.0.4 (7/1/2024) (Alex Free)
 
 *   [Implementation](build.md) of my [EzRe](https://github.com/alex-free/ezre) build system now allows for Linux i386 and x86_64 releases (in .deb and portable .zip format), and Windows i686 and x86_64 releases (in portable .zip format).
 *   Re-formatted source code to a consistent syntax (K&R). Lots of clean up and optimizations.

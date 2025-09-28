@@ -20,13 +20,15 @@ Disc images patched by this patcher may be burned to a CD-R, DVD-R, or DVD+R and
 
 ## Downloads
 
-### Version 1.0.5 (7/3/2024) (Alex Free)
+### Version 1.0.6 (2/28/2025) (Alex Free Unofficial Update)
 
-*   Fixed patching for [Viewtiful Joe](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3#post-356788). Every other edge case for detecting the boot file name has now been accounted for.
+* Updated EzRe build system to v1.0.7. Mac OS build and Linux RPM package files are now available.
+
+* Added ability to provide a third argument, `-n` for Windows CLI users. If you provide this after your disk image, it will no longer prompt you with 'press any key to continue'.
 
 ----------------------------
 
-Download v1.0.5 from the [PSX-Place Thread](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3)
+Download v1.0.6 from the [PSX-Place Thread](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3)
 
 [Previous versions](changelog.md)
 
@@ -68,4 +70,4 @@ EDC/ECC is regenerated for the patched sectors in bin/cue CD images (it isn't ne
 *   [MechaPwn](https://github.com/MechaResearch/MechaPwn) for the amazing exploit.
 *   [Mathias Lafeldt (mlafeldt)](https://github.com/mlafeldt) for the [Master Disc documentation](https://github.com/mlafeldt/ps2logo/blob/master/Documentation/ps2boot.txt).
 *   [CDRDAO](https://cdrdao.sourceforge.net/) for the EDC/ECC regeneration code.
-*   [Alex Free](https://github.com/alex-free) for v1.0.4 and v1.0.5 update.
+*   [Alex Free](https://github.com/alex-free) for v1.0.4+ updates.

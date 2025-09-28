@@ -32,32 +32,41 @@ Additional features:
 
 ## Table Of Contents
 
-*   [Downloads](#downloads)
-*   [Usage](#usage)
-*   [Building From Source](build.md)
-*   [License](#license)
+* [Downloads](#downloads)
+* [Usage](#usage)
+* [RAW Writing](#raw-writing)
+* [Building From Source](build.md)
+* [License](#license)
 
 ## Downloads
 
-### v1.0.3 (8/7/2024)
+### v1.0.4 (9/27/2025)
 
-*   [playstation-disc-burner-v1.0.3-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.
-
-*   [playstation-disc-burner-v1.0.3-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-x86_64.zip) _Portable Release For x86\_64 Linux_.
+*   [playstation-disc-burner-v1.0.4-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.4/playstation-disc-burner-v1.0.4-x86_64.zip) _Portable Release For x86\_64 Linux_.
 
 ---------------------------
 
 Changes:
 
-*   Added ability to set a burn speed for CD and DVDs independently. You can have one speed set for CDs, and another for DVDs.
+* Updated [EDCRE](https://github.com/alex-free/edcre) to version 1.1.0.
 
-*   Updated [EDCRE](https://github.com/alex-free/edcre) to version 1.0.8.
+* Updated [Libcrypt Patcher](https://github.com/alex-free/libcrypt-patcher) to version 1.0.9.
 
-*   Added ability to set burn speed with command line arguments (`-cds <cd burn speed>` or `-dvds <dvd burn speed>`) without having to give a valid input file first.
+* Updated [PS2 Master Disc Patcher](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3#post-409346) to v1.0.6.
 
-*   Added ability to set the burner with command line arguments (`-b <burner>`) without having to give a valid input file first.
+* Updated [P7zip-zstd](https://github.com/p7zip-project/p7zip) to git commit 6819e2dc1917e1267babddc6391cea56ead7123d.
 
-*   Fixed setting burner in the DVD ISO options menu.
+* Implemented fixes for an issue where if you [symlink](https://github.com/alex-free/playstation-disc-burner/pull/2) `psdb` to i.e. `/usr/local/bin/psdb` thanks to [brkzlr](https://github.com/brkzlr). Since it had been over a year and I had more plans on how to re-archeticutre the current `psdb` to work under such conditions, I took inspirations/code changes from his original pull request and re-integrated it into the v1.0.4 source tree. But they did point out this issue first and provided fixes which I built upon on v1.0.4 nearly a year later so many thanks to them.
+
+* New default burning mode is **non-RAW**. This change has happened because [_many_](https://gbatemp.net/threads/do-modern-burners-cds-make-lower-quality-ps1-backups.628708/page-12#post-10710761) burners do not support RAW burning mode, and only a [small](https://github.com/alex-free/tonyhax/blob/master/anti-piracy-bypass.md#edc) amount of PSX games require it. **The RAW burning mode can be enabled by specifying `psdb -r yes` to burn such games. I recommend to do this if your burner works with RAW mode. If you have issues burning discs in RAW mode, you can specify `pdsb -r no` to disable RAW mode.**
+
+* Changed how to specify a custom burner config. Instead of i.e. `psdb -burner /dev/sr1`, do `psdb -b /dev/sr1`. This is still an "advanced" feature and `psdb` will find the default burner by default in almost all cases (which is normally `/dev/sr0`).
+
+* Re-compiled the portable build. This fixes [issues](https://github.com/alex-free/playstation-disc-burner/issues/7#issue-3348980745) with Linux distros using GLIB 2.34 which can't load the included STATIC ld loader. Really strange why this ever became an issue.
+
+* Mandated GCC/G++ 13 be used for compilation since cdrtools is broken on GCC 14+.
+
+* Improved build system.
 
 [Previous versions](changelog.md)
 
@@ -71,7 +80,9 @@ Changes:
 
 `psdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.`
 
-`psdb -b <burner>      Set burner to <burner> (i.e. "/dev/sr0").`
+`psdb -b <burner>      Set burner to <burner> (i.e. "/dev/sr1").`
+
+`psdb -r <yes/no>      Enable RAW writing (not compatibile with some burners, default is no).`
 
 1) Download and unzip the latest release.
 
@@ -99,6 +110,12 @@ You can also drag and drop a disc image onto the `ps2db` file in the release if 
 ![spyro-2](images/spyro-3.png)
 
 Note: You will be prompted for root privileges when the burning program is executed in order to prevent buffer under-runs during burning which would result in a coaster. Root privileges also ensure that the burning program can access your burner hardware successfully.
+
+## Raw Writing
+
+A [small](https://github.com/alex-free/tonyhax/blob/master/anti-piracy-bypass.md#edc) number of PSX games require RAW burning due to EDC/ECC based protection (this does not affect Libcrypt patcher). Please see if your game is affected by finding it in [this table](https://github.com/alex-free/tonyhax/blob/master/anti-piracy-bypass.md) (`CTRL+F` is your friend here).
+
+If your game is affected, you can enable raw burning by using `psdb -r yes`. This is not enabled by default because some burners are not able to write in raw mode. If you find that your burner can not write in raw mode (cdrdao will give you an error) you can change it back to non-raw by using `psdb -r no`.
 
 ## License
 

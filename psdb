@@ -1,14 +1,64 @@
 #!/bin/bash
-version="v1.0.3"
+version=v1.0.4
 
-#set -e
+# If you symlink psdb's absolute path to a root privilaged dir, some things fail unless we only use the actual real path and not the symlink's. See https://github.com/alex-free/playstation-disc-burner/pull/2.
+real_portable_folder="$(dirname "$(readlink -f "$0")")"
+# Add all the self-contained binaries we need to the $PATH used within this script.
+PATH=""$real_portable_folder"/bin${PATH:+:$PATH}"
+echo -e "PlayStation Disc Burner (PSDB) $version By Alex Free\n\nPATH: $PATH\n\nTools:"
+# Stop if tool not found.
+set -e
+which cdrdao
+which cdrecord
+which psx80mp
+which lcp
+which ps2_master
+which esrtool
+which 7za
+which edcre
+echo
+set +e
+# Unset stop on error.
+
+change_raw_config() 
+{
+    echo "RAW burning enabled: $raw_enabled"
+
+    while true; do
+        if [[ "$raw_enabled" == "yes" ]]; then
+            read -p "Do you want to turn off RAW burning? (Y/n)" raw_response
+        
+            if [[ "$raw_response" == "y" || "$raw_response" == "Y" ]]; then
+                set_raw_config_val=no
+            fi
+        
+        elif [[ "$raw_enabled" == "no" ]]; then
+            read -p "Do you want to turn on RAW burning? (Y/n)" raw_response
+
+            if [[ "$raw_response" == "y" || "$raw_response" == "Y" ]]; then
+                set_raw_config_val=yes
+            fi
+        fi
+
+        if [[ "$raw_response" == "y" || "$raw_response" == "Y" ]]; then
+            echo "$set_raw_config_val" > "$real_portable_folder"/config/raw.txt
+            echo "RAW burning config has been changed."
+            break
+        fi
+
+        if [[ "$raw_response" == "n" || "$raw_response" == "N" ]]; then
+            echo "RAW burning config was not changed."
+            break
+        fi
+    done
+}
 
 change_burner() 
 {
     echo "Enter the cd burner devname, i.e default for linux is /dev/sr0:"
     read -p "Burner:" burner
 
-    echo "$burner" > config/burner.txt
+    echo "$burner" > "$real_portable_folder"/config/burner.txt
 }
 
 change_cd_burn_speed() 
@@ -21,7 +71,7 @@ change_cd_burn_speed()
         read -p "Set burn speed:" speed
     done
 
-    echo "$speed" > config/cd-burn-speed.txt
+    echo "$speed" > "$real_portable_folder"/config/cd-burn-speed.txt
 }
 
 change_dvd_burn_speed() 
@@ -34,15 +84,16 @@ change_dvd_burn_speed()
         read -p "Set burn speed:" speed
     done
 
-    echo "$speed" > config/dvd-burn-speed.txt
+    echo "$speed" > "$real_portable_folder"/config/dvd-burn-speed.txt
 }
 
-echo "PlayStation Disc Burner (PSDB) $version By Alex Free"
-
 if [ $# -ne 1 ] && [ $# -ne 2 ]; then
-    echo -e "Error: PSDB requires 1 or 2 arguments.\n\nUsage:\n\npsdb <input file>\n\n<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files).\n\npsdb -cds <cd burn speed>      Set burn speed for CDs to <cd burn speed> and exit.\n\npsdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.\n\npsdb -b <burner>      Set burner to <burner> (i.e. \"/dev/sr0\")."
+    echo -e "Error: PSDB requires 1 or 2 arguments.\n\nUsage:\n\npsdb <input file>\n\n<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files).\n\npsdb -cds <cd burn speed>      Set burn speed for CDs to <cd burn speed> and exit.\n\npsdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.\n\npsdb -b <burner>      Set burner to <burner> (i.e. \"/dev/sr0\").\n\npsdb -r <yes/no>      Enable RAW writing (not compatibile with some burners, default is no).\n"
     exit 1
 fi
+
+# Create config dir.
+mkdir -p "$real_portable_folder"/config
 
 if [ $# -eq 2 ]; then
     if [ "$1" == "-cds" ]; then
@@ -51,8 +102,7 @@ if [ $# -eq 2 ]; then
             exit 1
         fi
 
-        mkdir -p "$(dirname "$0")"/config
-        echo "$2" > "$(dirname "$0")"/config/cd-burn-speed.txt
+        echo "$2" > "$real_portable_folder"/config/cd-burn-speed.txt
         echo "CD burn speed set to \"$2"\"
         exit 0
     elif [ "$1" == "-dvds" ]; then
@@ -61,17 +111,24 @@ if [ $# -eq 2 ]; then
             exit 1
         fi
 
-        mkdir -p "$(dirname "$0")"/config
-        echo "$2" > "$(dirname "$0")"/config/dvd-burn-speed.txt
+        echo "$2" > "$real_portable_folder"/config/dvd-burn-speed.txt
         echo "DVD burn speed set to \"$2"\"
         exit 0
     elif [ "$1" == "-b" ]; then
-        mkdir -p "$(dirname "$0")"/config
-        echo "$2" > "$(dirname "$0")"/config/burner.txt
+        echo "$2" > "$real_portable_folder"/config/burner.txt
         echo "Burner set to \"$2"\"
+        exit 0
+    elif [ "$1" == "-r" ]; then
+        if [[ "$2" != "yes" && "$2" != "no" ]]; then
+            echo "Error: 2nd argument was not yes or no, unsure what to set raw burning status to."
+            exit 1
+        fi
+
+        echo "$2" > "$real_portable_folder"/config/raw.txt
+        echo "RAW burning capability set to \"$2"\"
         exit 0 
     else
-        echo "Error: 2 arguemnts were given, and the first argument was niether -cds or -dvds"
+        echo "Error: 2 arguemnts were given, and the first argument was not -cds, -dvds, -b, or -r"
         exit 1
     fi
 fi
@@ -81,45 +138,42 @@ if [ ! -f "$1" ]; then
     exit 1
 fi
 
-cd "$(dirname "$0")"
-
-# Now that we are sure we are in the directory of this script, we can add all the self-contained binaries we need to the $PATH used within this script.
-PATH="${PWD}/bin"${PATH:+:${PATH}}
-# echo $PATH
-# which cdrdao
-# which cdrecord
-# which psx80mp
-# which lcp
-# which ps2master
-# which esrtool
-# which 7za
-# which edcre
-
-if [ ! -f "config/cd-burn-speed.txt" ]; then
-    mkdir -p config
+# CD burn speed.
+if [ ! -f ""$real_portable_folder"/config/cd-burn-speed.txt" ]; then
     echo "CD burn speed config not found, setting to default speed of 1x"
-    echo 1 > config/cd-burn-speed.txt
+    echo 1 > "$real_portable_folder"/config/cd-burn-speed.txt
 fi
 
-if [ ! -f "config/dvd-burn-speed.txt" ]; then
-    mkdir -p config
+cd_burn_speed=$(cat "$real_portable_folder"/config/cd-burn-speed.txt)
+
+# DVD burn speed.
+if [ ! -f ""$real_portable_folder"/config/dvd-burn-speed.txt" ]; then
     echo "DVD burn speed config not found, setting to default speed of 1x"
-    echo 1 > config/dvd-burn-speed.txt
+    echo 1 > "$real_portable_folder"/config/dvd-burn-speed.txt
 fi
 
-if [ ! -f "config/burner.txt" ]; then
+dvd_burn_speed=$(cat "$real_portable_folder"/config/dvd-burn-speed.txt)
+
+# Burner.
+if [ ! -f ""$real_portable_folder"/config/burner.txt" ]; then
     mkdir -p config
     echo "Burner config not found, setting to default value of /dev/sr0"
-    echo "/dev/sr0" > config/burner.txt
+    echo "/dev/sr0" > "$real_portable_folder"/config/burner.txt
 fi
 
-burner=$(cat config/burner.txt)
+burner=$(cat "$real_portable_folder"/config/burner.txt)
 echo -e "\nBurner: $burner"
 
-cd_burn_speed=$(cat config/cd-burn-speed.txt)
-dvd_burn_speed=$(cat config/dvd-burn-speed.txt)
+# RAW burn enabled?
+if [ ! -f ""$real_portable_folder"/config/raw.txt" ]; then
+    echo "RAW burning config not found, setting to default value of no"
+    echo "no" > "$real_portable_folder"/config/raw.txt
+fi
 
-# Put temp directory in /tmp (or whatever the OS prefers)
+raw_enabled=$(cat "$real_portable_folder"/config/raw.txt)
+echo -e "\nRAW burning enabled: $raw_enabled"
+
+# Put temp directory in /tmp (or whatever the OS prefers).
 tmp=$(mktemp -d --tmpdir ps2db.XXX)
 
 # When this script exits, automatically delete the temp directory.
@@ -222,7 +276,7 @@ echo DVD ISO Options
 echo =====================================
 
 PS3="Enter an option number: "
-    select opt in Burn "Add ESR patch" "Add ESR patch and burn" "Add Master Disc patch"  "Add Master Disc patch and burn" "Change burner" "Change burn speed" Quit; do    
+    select opt in Burn "Add ESR patch" "Add ESR patch and burn" "Add Master Disc patch" "Add Master Disc patch and burn" "Change burner" "Change burn speed" Quit; do    
     case $opt in
         "Burn")
             mode=2
@@ -270,7 +324,7 @@ echo CD BIN/CUE Options
 echo =====================================
 
 PS3="Enter an option number: "
-    select opt in Burn "Add Master Disc patch"  "Add Master Disc patch and burn" "Add LibCrypt patch" "Add LibCrypt patch and burn" "Add PSX 80 Minute patch" "Add PSX 80 Minute patch and burn" "Change burner" "Change burn speed" Quit; do    
+    select opt in Burn "Add Master Disc patch"  "Add Master Disc patch and burn" "Add LibCrypt patch" "Add LibCrypt patch and burn" "Add PSX 80 Minute patch" "Add PSX 80 Minute patch and burn" "Change burner" "Change burn speed" "Enable/disable RAW writing" Quit; do    
     case $opt in
         "Burn")
             mode=2
@@ -308,6 +362,10 @@ PS3="Enter an option number: "
             change_cd_burn_speed
             exit 0
             ;;
+        "Enable/disable RAW writing")
+            change_raw_config
+            exit 0
+            ;;
         Quit)
             exit 0
             ;;
@@ -322,7 +380,11 @@ fi
 ## Patch
 
 if [ ! -z "$data_track" ]; then # CD, so regen EDC/ECC after system volume descriptor
-    edcre -v -s 16 "$data_track"
+    # If we do RAW burning, we still EDCRE sector 16+ to correct patches/mods that don't re-generate EDC data. This still doesn't trip EDC protection because that doesn't check sector 16+
+    if [ "$raw_enabled" == "yes" ]; then
+        echo "RAW mode enabled. Regenerating sector 16 and up."
+        edcre -v -s 16 "$data_track"
+    fi
 fi
 
 if [ "$mode" == "3" ] || [ "$mode" == "4" ]; then # add esr
@@ -330,11 +392,11 @@ if [ "$mode" == "3" ] || [ "$mode" == "4" ]; then # add esr
     mv $tmp/"$output_base_name_without_extension".iso "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
 elif [ "$mode" == "5" ] || [ "$mode" == "6" ]; then # add master disc patch
     if [ -z "$data_track" ]; then # DVD
-        ps2master $tmp/"$output_base_name_without_extension"."$input_extension"
+        ps2_master $tmp/"$output_base_name_without_extension"."$input_extension"
         rm -f DVD_Sectors.Bin
         mv $tmp/"$output_base_name_without_extension".iso "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
     else # CD
-        ps2master "$data_track"
+        ps2_master "$data_track"
         rm -f CD_Sectors.Bin
         mkdir -p "$output_parent_directory"/"$output_target_directory"_MD
         mv $tmp/* "$output_parent_directory"/"$output_target_directory"_MD
@@ -388,9 +450,20 @@ if [ "$mode" == "2" ]; then # burn as-is
         
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
-            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            # The env command is used here becaue sudo context looses our custom path. We need to do nothing if already root.
+            if [ "$raw_enabled" == "yes" ]; then
+                sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            else
+                # So --driver generic-mmc is the default, it doesn't need to be specified.
+                sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --swap --eject -n "$base_cue_file"
+            fi
         else
-            cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            if [ "$raw_enabled" == "yes" ]; then
+                cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            else
+                # So --driver generic-mmc is the default, it doesn't need to be specified.
+                cdrdao write --device "$burner" --speed $cd_burn_speed --swap --eject -n "$base_cue_file"
+            fi
         fi
     fi
 

@@ -1,11 +1,28 @@
 #!/bin/bash
 
 program=playstation-disc-burner
-version=v1.0.3
+version=v1.0.4
 arch=$(uname -m)
 release=$program-$version-$arch
+# Append -i386-static or -x86_64-static
+ps2_master_disc_patcher=ps2-master-disc-patcher-v1.0.6-linux
+
 set -e
 cd "$(dirname "$0")"
+
+if sed --version >/dev/null 2>&1; then
+    echo "Info: using GNU sed"
+    bsd_sed=false
+else
+    echo "Info: using BSD sed"
+    bsd_sed=true
+fi
+
+if [ "$bsd_sed" == "true" ]; then
+    sed -i '' -E "s|^version=.*|version=$version|" psdb
+else
+    sed -i'' -E "s|^version=.*|version=$version|" psdb
+fi
 
 # PSDB
 if [ "$1" == "script" ]; then
@@ -41,11 +58,38 @@ err()
 }
 trap err ERR
 
+# Need GCC 13 because GCC 14 breaks cdrtools...
 if command -v apt > /dev/null 2>&1; then
     echo "APT package manager detected for build dependencies, sudo is required to install them:"
     sudo apt update
-    sudo apt install --yes build-essential cmake patchelf zip git autoconf
+    sudo apt install --yes build-essential cmake patchelf zip git autoconf gcc-13 g++-13
+elif command -v dnf > /dev/null 2>&1; then
+    echo "DNF package manager detected for build dependencies, sudo is required to install them:"
+    sudo dnf install -y @development-tools cmake patchelf zip git autoconf gcc-13 gcc13-c++
 fi
+
+# CDrtools is broken on GCC 14: https://lists.openembedded.org/g/openembedded-core/topic/patch_cdrtools_native_fix/105857476. TODO: fix cdrtools for GCC 14+.
+gcc() {
+  gcc-13 "$@"
+}
+export -f gcc
+
+cc() {
+  gcc-13 "$@"
+}
+export -f cc
+gcc -v
+
+g++() {
+  g++-13 "$@"
+}
+export -f gcc
+
+c++() {
+  g++-13 "$@"
+}
+export -f cc
+g++ -v
 
 # Put temp directory in /tmp (or whatever the OS prefers)
 tmp=$(mktemp -d --tmpdir psdb.XXX)
@@ -58,14 +102,10 @@ cp unlicense.md $release/licenses/psdb.md
 # PSX80MP
 cp -r psx80mp $tmp
 
-if [ "$arch" == "x86_64" ]; then
-    make -C $tmp/psx80mp
-elif [ "$arch" == "i686" ]; then
-    make -C $tmp/psx80mp
-fi
-# TODO: Update with EZRE, uses proto-ezre so no need for different target copy like below:
-cp $tmp/psx80mp/psx80mp $release/bin
-cp $tmp/psx80mp/license.txt $release/licenses/psx80mp.md
+make -C $tmp/psx80mp
+
+cp -r $tmp/psx80mp/build/psx80mp $release/bin
+cp $tmp/psx80mp/license.md $release/licenses/psx80mp.md
 
 # LibCrypt Patcher
 cp -r libcrypt-patcher $tmp
@@ -95,32 +135,55 @@ cp $tmp/edcre/license.md $release/licenses/edcre.md
 
 # CDRDAO
 cdrdao-pled/build
-shopt -s extglob
+
+# Copy all files but markdown (ignore folders) (binaries, script wrappers, libraries, ld loader, etc.)
+shopt -s extglob nullglob
 
 if [ "$arch" == "x86_64" ]; then
-    cp -r cdrdao-pled/cdrdao-c2b0ff2-pled-1.0.5-linux-x86_64/!(*.md) $release/bin
+    for file in cdrdao-pled/cdrdao-c2b0ff2-pled-1.0.5-linux-x86_64/!(*.md); do
+        if [[ -f "$file" ]]; then
+            cp "$file" $release/bin/
+        fi
+    done
 elif [ "$arch" == "i686" ]; then
-    cp -r cdrdao-pled/cdrdao-c2b0ff2-pled-1.0.5-linux-i686/!(*.md) $release/bin
+    for file in cdrdao-pled/cdrdao-c2b0ff2-pled-1.0.5-linux-i686/!(*.md); do
+        if [[ -f "$file" ]]; then
+            cp "$file" $release/bin/
+        fi
+    done
 fi
 
 shopt -u extglob
+shopt -u nullglob
+
 cp cdrdao-pled/cdrdao/COPYING $release/licenses/cdrdao.md
 cdrdao-pled/build clean
 
 # CDRecord
 cdrtools-pled/build
-shopt -s extglob
+
+# Copy all files but markdown (ignore folders) (binaries, script wrappers, libraries, ld loader, etc.)
+shopt -s extglob nullglob
 
 if [ "$arch" == "x86_64" ]; then
-    cp -r cdrtools-pled/cdrtools-v3.02a09-pled-1.0.1-linux-x86_64/!(*.md) $release/bin
+    for file in cdrtools-pled/cdrtools-v3.02a09-pled-1.0.1-linux-x86_64/!(*.md); do
+        if [[ -f "$file" ]]; then
+            cp "$file" $release/bin/
+        fi
+    done
 elif [ "$arch" == "i686" ]; then
-    cp -r cdrtools-pled/cdrtools-v3.02a09-pled-1.0.1-linux-i686/!(*.md) $release/bin
+    for file in cdrtools-pled/cdrtools-v3.02a09-pled-1.0.1-linux-i686/!(*.md); do
+        if [[ -f "$file" ]]; then
+            cp "$file" $release/bin/
+        fi
+    done
 fi
 
 shopt -u extglob
-cp cdrtools-pled/cdrtools/GPL-2.0.txt $release/bin/licenses/cdrecord-gpl2.md
-cp cdrtools-pled/cdrtools/CDDL.Schily.txt $release/bin/licenses/cdrecord-cddl.md
-cdrtools-pled/build clean
+shopt -u nullglob
+
+cp cdrtools-pled/cdrtools/GPL-2.0.txt $release/licenses/cdrecord-gpl2.md
+cp cdrtools-pled/cdrtools/CDDL.Schily.txt $release/licenses/cdrecord-cddl.md
 
 # ESRTool-Legacy
 cp -r esrtool-legacy $tmp
@@ -131,16 +194,16 @@ cp esrtool-legacy/COPYING $release/licenses/esrtool-legacy.md
 
 # PS2 Master Disc Patcher
 if [ "$arch" == "x86_64" ]; then
-    cp ps2-master-disc-patcher-v1.0.5-linux-x86_64-static/ps2master $release/bin
+    cp $ps2_master_disc_patcher-x86_64-static/ps2_master $release/bin
 elif [ "$arch" == "i686" ]; then
-    cp ps2-master-disc-patcher-v1.0.5-linux-i386-static/ps2master $release/bin
+    cp $ps2_master_disc_patcher-i386-static/ps2_master $release/bin
 fi
 
 # P7zip
 cp -r p7zip $tmp
 make -C $tmp/p7zip/CPP/7zip/Bundles/Alone -f makefile.gcc
 pled/pled $tmp/p7zip/CPP/7zip/Bundles/Alone/_o/bin/7za $release/bin
-cp p7zip/DOC/License.txt $release/licenses/p7zip.md
+cp p7zip/License.txt $release/licenses/p7zip.md
 
 chmod -R 777 $release
 zip -r "$release".zip $release
