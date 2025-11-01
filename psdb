@@ -1,5 +1,5 @@
 #!/bin/bash
-version=v1.0.4
+version=v1.0.5
 
 # If you symlink psdb's absolute path to a root privilaged dir, some things fail unless we only use the actual real path and not the symlink's. See https://github.com/alex-free/playstation-disc-burner/pull/2.
 real_portable_folder="$(dirname "$(readlink -f "$0")")"
@@ -10,46 +10,63 @@ echo -e "PlayStation Disc Burner (PSDB) $version By Alex Free\n\nPATH: $PATH\n\n
 set -e
 which cdrdao
 which cdrecord
+which edcre
+which pops2cue
+which psxund
 which psx80mp
 which lcp
 which ps2_master
 which esrtool
 which 7za
-which edcre
 echo
 set +e
 # Unset stop on error.
+
+# Default driver for cdrdao, only changed if raw wrting is enabled.
+driver=generic-mmc
+
+# If we do RAW burning, we still EDCRE sector 16+ to correct patches/mods that don't re-generate EDC data. This still doesn't trip EDC protection because that doesn't check sector 16+
+update_edc_ecc()
+{
+    if [ "$raw_enabled" = "yes" ]; then
+        echo "RAW mode enabled. Regenerating sector 16 and up."
+        edcre -v -s 16 "$data_track"
+        driver=generic-mmc-raw
+    fi
+}
 
 change_raw_config() 
 {
     echo "RAW burning enabled: $raw_enabled"
 
     while true; do
-        if [[ "$raw_enabled" == "yes" ]]; then
+
+        if [ "$raw_enabled" = "yes" ]; then
             read -p "Do you want to turn off RAW burning? (Y/n)" raw_response
         
-            if [[ "$raw_response" == "y" || "$raw_response" == "Y" ]]; then
+            if [[ "$raw_response" = "y" || "$raw_response" = "Y" ]]; then
                 set_raw_config_val=no
             fi
         
-        elif [[ "$raw_enabled" == "no" ]]; then
+        elif [ "$raw_enabled" = "no" ]; then
             read -p "Do you want to turn on RAW burning? (Y/n)" raw_response
 
-            if [[ "$raw_response" == "y" || "$raw_response" == "Y" ]]; then
+            if [[ "$raw_response" = "y" || "$raw_response" = "Y" ]]; then
                 set_raw_config_val=yes
             fi
         fi
 
-        if [[ "$raw_response" == "y" || "$raw_response" == "Y" ]]; then
+        if [[ "$raw_response" = "y" || "$raw_response" = "Y" ]]; then
             echo "$set_raw_config_val" > "$real_portable_folder"/config/raw.txt
             echo "RAW burning config has been changed."
             break
         fi
 
-        if [[ "$raw_response" == "n" || "$raw_response" == "N" ]]; then
+        if [[ "$raw_response" = "n" || "$raw_response" = "N" ]]; then
             echo "RAW burning config was not changed."
             break
         fi
+    
     done
 }
 
@@ -76,7 +93,7 @@ change_cd_burn_speed()
 
 change_dvd_burn_speed() 
 {
-    echo "Enter a number for the speed to burn DVDs at. If your burner does not support the speed you provide the closest available speed will be used instead."
+    echo "Enter a number for the speed to burn DVDs at. INFO: If your burner does not support the speed you provide the closest available speed will be used instead."
     read -p "Set burn speed:" speed
 
     while [[ ! "$speed" =~ ^[0-9]+$ ]]; do
@@ -88,7 +105,7 @@ change_dvd_burn_speed()
 }
 
 if [ $# -ne 1 ] && [ $# -ne 2 ]; then
-    echo -e "Error: PSDB requires 1 or 2 arguments.\n\nUsage:\n\npsdb <input file>\n\n<input file>     A file ending in .iso, .ISO, .cue, .CUE, .BIN, or .bin (or a compressed archive containing said files).\n\npsdb -cds <cd burn speed>      Set burn speed for CDs to <cd burn speed> and exit.\n\npsdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.\n\npsdb -b <burner>      Set burner to <burner> (i.e. \"/dev/sr0\").\n\npsdb -r <yes/no>      Enable RAW writing (not compatibile with some burners, default is no).\n"
+    echo -e "Error: PSDB requires 1 or 2 arguments.\n\nUsage:\n\npsdb <input file>\n\n<input file>     A file ending in .iso, .ISO, .cue, .CUE, .bin, .BIN, .VCD, .vcd (or a compressed archive containing said files).\n\npsdb -cds <cd burn speed>      Set burn speed for CDs to <cd burn speed> and exit.\n\npsdb -dvds <dvd burn speed>      Set burn speed to <dvd burn speed> for DVDs and exit.\n\npsdb -b <burner>      Set burner to <burner> (i.e. \"/dev/sr0\").\n\npsdb -r <yes/no>      Enable RAW writing (not compatibile with some burners, default is no).\n"
     exit 1
 fi
 
@@ -96,7 +113,9 @@ fi
 mkdir -p "$real_portable_folder"/config
 
 if [ $# -eq 2 ]; then
-    if [ "$1" == "-cds" ]; then
+
+    if [ "$1" = "-cds" ]; then
+
         if [[ ! "$2" =~ ^[0-9]+$ ]]; then
             echo "Error: specified burn speed: \"$2\" is not a number"
             exit 1
@@ -105,7 +124,9 @@ if [ $# -eq 2 ]; then
         echo "$2" > "$real_portable_folder"/config/cd-burn-speed.txt
         echo "CD burn speed set to \"$2"\"
         exit 0
-    elif [ "$1" == "-dvds" ]; then
+
+    elif [ "$1" = "-dvds" ]; then
+
         if [[ ! "$2" =~ ^[0-9]+$ ]]; then
             echo "Error: specified burn speed: \"$2\" is not a number"
             exit 1
@@ -114,11 +135,14 @@ if [ $# -eq 2 ]; then
         echo "$2" > "$real_portable_folder"/config/dvd-burn-speed.txt
         echo "DVD burn speed set to \"$2"\"
         exit 0
-    elif [ "$1" == "-b" ]; then
+
+    elif [ "$1" = "-b" ]; then
         echo "$2" > "$real_portable_folder"/config/burner.txt
         echo "Burner set to \"$2"\"
         exit 0
-    elif [ "$1" == "-r" ]; then
+
+    elif [ "$1" = "-r" ]; then
+
         if [[ "$2" != "yes" && "$2" != "no" ]]; then
             echo "Error: 2nd argument was not yes or no, unsure what to set raw burning status to."
             exit 1
@@ -179,7 +203,7 @@ tmp=$(mktemp -d --tmpdir ps2db.XXX)
 # When this script exits, automatically delete the temp directory.
 cleanup() 
 { 
-    if [[ -e $tmp ]]; then
+    if [ -e $tmp ]; then
         echo "Clearing temp files..."  
         rm -r $tmp   
     fi
@@ -195,10 +219,12 @@ err()
 trap err ERR
 
 if [ ! -f "$1" ]; then
-    echo "Error: Can not open file: "$1"\n"
+    echo "Error: Can not open input file: "$1"\n"
     exit 1
+
 else
     output_dir=$(dirname "$1")
+    input_extension="${1##*.}"
 
     if file "$1" | grep "UDF filesystem data" > /dev/null 2>&1; then
         output_base_name=$(basename "$1")
@@ -206,6 +232,31 @@ else
         input_extension="${1##*.}"
         cp "$1" $tmp/"$output_base_name_without_extension"."$input_extension"
         echo -e "\nWhat do you want to do with \""$1"\"?\n"
+    
+    elif [[ "$input_extension" = "vcd" || "$input_extension" = "VCD" ]]; then
+        cp "$1" "$tmp"
+        base_vcd=$(basename "$1")
+        # Pops2cue returns 1 on success? Todo: contribute to that project and remove || true (which prevents the script from exiting).
+        (cd $tmp && pops2cue "$base_vcd" || true)
+        rm $tmp/"$base_vcd"
+        cp $tmp/ocueut.vcd $tmp/ocueut.cue
+        cue_file=$tmp/ocueut.cue
+        data_track=$tmp/ocueut.bin
+        base_data_track=$(basename "$data_track")
+
+        # Since we can't trust pops2cue return val.
+        if [[ ! -f "$cue_file" && ! -f "$data_track" ]]; then
+            echo "Error: VCD to BIN/CUE conversion has failed."
+            exit 1
+        fi
+
+        base_cue_file=$(basename "$cue_file")
+        output_target_directory="${base_vcd%.*}" # strip extension
+        output_parent_directory=$(dirname "$1")
+        output_parent_directory_base_name=$(basename "$1")
+
+        echo -e "\nWhat do you want to do with \"$1\"?\n"
+    
     elif file "$1" | grep -q ": data\|ASCII"; then # ': data' matches bin files, 'ASCII' matches cue files.
         shopt -s nocaseglob  # Enable case-insensitive globbing
         cp -rv "$(dirname "$1")"/*.{bin,BIN,cue,CUE} "$tmp" > /dev/null 2>&1
@@ -213,47 +264,27 @@ else
 
         data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
         base_data_track=$(basename "$data_track")
-
         cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
         base_cue_file=$(basename "$cue_file")
-
         output_target_directory="${base_cue_file%.*}" # strip extension
-
         output_parent_directory=$(dirname "$1")
         output_parent_directory=""$output_parent_directory"/../" # we were given a BIN or CUE file which is in a directory itself. We want the output one directory above this for consistancy with archived file handling output by this script
         output_parent_directory_base_name=$(basename "$1")
 
         echo -e "\nWhat do you want to do with \"$base_data_track\"?\n"
+    
     else
         7za e "$1" -o$tmp
-        multiple_files=$(ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null | wc -l)
+        bin_file_count=$(ls -1a $tmp/*.bin $tmp/*.BIN 2> /dev/null | wc -l)
+        iso_file_count=$(ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null | wc -l)
+        vcd_file_count=$(ls -1a $tmp/*.vcd $tmp/*.VCD 2> /dev/null | wc -l)
 
-        if [[ $multiple_files -gt 1 ]]; then # Got multiple DVD ISOs
-            echo -e "\nError: multiple ISO files found in archive file: $1 :\n"
-            ls -1a $tmp/*.iso $tmp/*.ISO 2> /dev/null
-            echo -e "\nOnly one ISO file with extension .iso or .ISO can be in the archive file: $1 for it to be supported for prooccessing by PS2DB"
+        # Multiple ISOs in archive check.
+        if [[ $iso_file_count -gt 1 ]]; then # Got multiple DVD ISOs
+            echo -e "\nError: multiple ISO files found in archive file: $1\nOnly one ISO file with extension .iso or .ISO can be in the archive file: $1 for it to be supported for prooccessing by PS2DB"
             exit 1
-        elif [[ $multiple_files -eq 0 ]]; then # No ISO/iso files, what about BIN/bin files?
-            multiple_files=$(ls -1a $tmp/*.bin $tmp/*.BIN 2> /dev/null | wc -l)
-
-            if [[ $multiple_files -eq 0 ]]; then # Neither
-                echo "Error: Neither an ISO file with either extension .iso or .ISO or a BIN file with .bin or .BIN was found in the root of the given archive file $1"
-                exit 1
-            else # Got CD
-                data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
-                base_data_track=$(basename "$data_track")
-
-                cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
-                base_cue_file=$(basename "$cue_file")
-
-                output_target_directory="${base_cue_file%.*}" # strip extension
-
-                output_parent_directory=$(dirname "$1")
-                output_parent_directory_base_name=$(basename "$1")
-
-                echo -e "\nWhat do you want to do with \"$base_data_track\" (found in \"$1\")?\n"
-            fi
-        elif [[ $multiple_files -eq 1 ]]; then # For DVD
+        # Proccess single ISO in archive.
+        elif [[ $iso_file_count -eq 1 ]]; then # For DVD
             shopt -s nocaseglob  # Enable case-insensitive globbing
             temp_iso_file=$(ls -1a  $tmp/*.{ISO,iso})
             shopt -u nocaseglob  # Disable case-insensitive globbing
@@ -262,6 +293,58 @@ else
             output_base_name_without_extension="${output_base_name%.*}"
             input_extension="${temp_iso_file##*.}"
             echo -e "\nWhat do you want to do with \"$output_base_name_without_extension.$input_extension\" (found in \"$1\")?\n"
+        
+        # Multiple VCDs in archive check.
+        elif [[ $vcd_file_count -gt 1 ]]; then
+            echo -e "\nError: multiple VCD files found in archive file: $1\nOnly one VCD file with extension .vcd or .VCD can be in the archive file: $1 for it to be supported for prooccessing by PS2DB"
+            exit 1
+        # Proccess single VCD in archive.
+        elif [[ $vcd_file_count -eq 1 ]]; then # For DVD
+            shopt -s nocaseglob  # Enable case-insensitive globbing
+            tmp_vcd_file=$(ls -1a  $tmp/*.{VCD,vcd})
+            shopt -u nocaseglob  # Disable case-insensitive globbing
+
+            base_vcd=$(basename "$tmp_vcd_file")
+            # Pops2cue returns 1 on success? Todo: contribute to that project and remove || true (which prevents the script from exiting).
+            (cd $tmp && pops2cue "$base_vcd" || true)
+            rm $tmp/"$base_vcd"
+            cp $tmp/ocueut.vcd $tmp/ocueut.cue
+            cue_file=$tmp/ocueut.cue
+            data_track=$tmp/ocueut.bin
+            # Update bin_file_count for proccessing later.
+            bin_file_count=1
+            base_data_track=$(basename "$data_track")
+
+            # Since we can't trust pops2cue return val.
+            if [[ ! -f "$cue_file" && ! -f "$data_track" ]]; then
+                echo "Error: VCD to BIN/CUE conversion has failed."
+                exit 1
+            fi
+
+            base_cue_file=$(basename "$cue_file")
+            output_target_directory="${base_vcd%.*}" # strip extension
+            output_parent_directory=$(dirname "$1")
+            output_parent_directory_base_name=$(basename "$1")
+
+            echo -e "\nWhat do you want to do with \"$base_data_track\" (found in \"$1\")?\n"
+
+        # Proccess BIN/CUE format.
+        elif [[ "$bin_file_count" -gt 0 ]]; then
+            data_track=$(find $tmp -maxdepth 1 -type f \( -name "*.bin" -o -name "*.BIN" \) | sort | head -n 1)
+            base_data_track=$(basename "$data_track")
+
+            cue_file=$(find $tmp -maxdepth 1 -type f \( -name "*.cue" -o -name "*.CUE" \) | sort | head -n 1)
+            base_cue_file=$(basename "$cue_file")
+
+            output_target_directory="${base_cue_file%.*}" # strip extension
+
+            output_parent_directory=$(dirname "$1")
+            output_parent_directory_base_name=$(basename "$1")
+            echo -e "\nWhat do you want to do with \"$base_data_track\" (found in \"$1\")?\n"
+
+        else
+            echo "Error: Could not find any .BIN, .bin, .ISO, .iso, .VCD, or .vcd file in \"$1\"."
+            exit 1
         fi
     fi
 
@@ -324,7 +407,7 @@ echo CD BIN/CUE Options
 echo =====================================
 
 PS3="Enter an option number: "
-    select opt in Burn "Add Master Disc patch"  "Add Master Disc patch and burn" "Add LibCrypt patch" "Add LibCrypt patch and burn" "Add PSX 80 Minute patch" "Add PSX 80 Minute patch and burn" "Change burner" "Change burn speed" "Enable/disable RAW writing" Quit; do    
+    select opt in Burn "Add Master Disc patch"  "Add Master Disc patch and burn" "Add LibCrypt patch" "Add LibCrypt patch and burn" "Add PSX 80 Minute patch" "Add PSX 80 Minute patch and burn" "Add PSX Undither patch" "Add PSX Undither patch and burn" "Change burn speed" "Enable/disable RAW writing" Quit; do    
     case $opt in
         "Burn")
             mode=2
@@ -354,6 +437,14 @@ PS3="Enter an option number: "
             mode=10
             break
             ;;
+        "Add PSX Undither patch")
+            mode=11
+            break
+            ;;
+        "Add PSX Undither patch and burn")
+            mode=12
+            break
+            ;;
         "Change burner")
             change_burner
             exit 0
@@ -378,61 +469,73 @@ done
 fi
 
 ## Patch
-
-if [ ! -z "$data_track" ]; then # CD, so regen EDC/ECC after system volume descriptor
-    # If we do RAW burning, we still EDCRE sector 16+ to correct patches/mods that don't re-generate EDC data. This still doesn't trip EDC protection because that doesn't check sector 16+
-    if [ "$raw_enabled" == "yes" ]; then
-        echo "RAW mode enabled. Regenerating sector 16 and up."
-        edcre -v -s 16 "$data_track"
-    fi
-fi
-
-if [ "$mode" == "3" ] || [ "$mode" == "4" ]; then # add esr
+if [ "$mode" = "3" ] || [ "$mode" = "4" ]; then # add esr
     esrtool p $tmp/"$output_base_name_without_extension"."$input_extension"
     mv $tmp/"$output_base_name_without_extension".iso "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
-elif [ "$mode" == "5" ] || [ "$mode" == "6" ]; then # add master disc patch
+    echo "Done! ESR patched ISO file is \""$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"\"."
+elif [ "$mode" = "5" ] || [ "$mode" = "6" ]; then # add master disc patch
+    
     if [ -z "$data_track" ]; then # DVD
         ps2_master $tmp/"$output_base_name_without_extension"."$input_extension"
         rm -f DVD_Sectors.Bin
         mv $tmp/"$output_base_name_without_extension".iso "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
+        echo "Done! Master Disc patched ISO file is \""$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"\"."
     else # CD
         ps2_master "$data_track"
+        update_edc_ecc
         rm -f CD_Sectors.Bin
         mkdir -p "$output_parent_directory"/"$output_target_directory"_MD
         mv $tmp/* "$output_parent_directory"/"$output_target_directory"_MD
+        echo "Done! Master Disc patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_MD\"."
     fi
-elif [ "$mode" == "7" ] || [ "$mode" == "8" ]; then # add LibCrypt patch
+
+elif [ "$mode" = "7" ] || [ "$mode" = "8" ]; then # add LibCrypt patch
         lcp "$data_track"
+        update_edc_ecc
         mkdir -p "$output_parent_directory"/"$output_target_directory"_LCP
         mv $tmp/* "$output_parent_directory"/"$output_target_directory"_LCP
-elif [ "$mode" == "9" ] || [ "$mode" == "10" ]; then # add PSX80MP patch
+        echo "Done! LibCrypt patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_LCP\"."
+elif [ "$mode" = "9" ] || [ "$mode" == "10" ]; then # add PSX80MP patch
         psx80mp "$data_track"
+        update_edc_ecc
         mkdir -p "$output_parent_directory"/"$output_target_directory"_PSX80MP
         mv $tmp/* "$output_parent_directory"/"$output_target_directory"_PSX80MP
-elif [ "$mode" == "2" ]; then # leave as-is, except enforce EDC/ECC correctness starting at volume descriptor for CD BIN/CUE (sectors before that are used in EDC protection of some games and are required to be invalid)
-    if [[ $multiple_files -gt 0 ]]; then # Did come from compressed archive
-        if [ -z "$data_track" ]; then # Is DVD
-            mv $tmp/"$output_base_name_without_extension".iso "$output_dir"/"$output_base_name_without_extension"."$input_extension"
-        else # Is CD
-            mkdir -p "$output_parent_directory"/"$output_target_directory"
-            mv $tmp/* "$output_parent_directory"/"$output_target_directory"
-        fi
+        echo "Done! PSX80MP patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_PSX80MP\"."
+elif [ "$mode" = "11" ] || [ "$mode" = "12" ]; then # add PSX Undither patch
+        psxund "$data_track"
+        update_edc_ecc
+        mkdir -p "$output_parent_directory"/"$output_target_directory"_PSXUND
+        mv $tmp/* "$output_parent_directory"/"$output_target_directory"_PSXUND
+        echo "Done! PSX Undither patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_PSXUND\"."
+elif [ "$mode" = "2" ]; then # leave as-is, except enforce EDC/ECC correctness starting at volume descriptor for CD BIN/CUE (sectors before that are used in EDC protection of some games and are required to be invalid).
+    if [[ $iso_file_count -eq 1 ]]; then # Did come from compressed archive.
+        mv $tmp/"$output_base_name_without_extension".iso "$output_dir"/"$output_base_name_without_extension"."$input_extension"
+    elif [[ $bin_file_count -gt 0 ]]; then # Did come from compressed archive.
+        mkdir -p "$output_parent_directory"/"$output_target_directory"
+        mv $tmp/* "$output_parent_directory"/"$output_target_directory"
     fi
 fi
 
 # (sudo prevents buffer underrun/coasters/enables USB access via PLED style binaries with the USB host)
 
 ## Burn As-Is
-if [ "$mode" == "2" ]; then # burn as-is    
+if [ "$mode" = "2" ]; then # burn as-is    
+
     if [ -z "$data_track" ]; then # DVD
-        if [[ $multiple_files -gt 0 ]]; then # Did come from compressed archive
+
+        if [[ "$iso_file_count" -eq 1 ]]; then # Did come from compressed archive.
+
             if [ "$EUID" != 0 ]; then
                 echo "Info: Root privilages are required to ensure success of burn"
                 sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"."$input_extension"
             else
                cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"."$input_extension"
             fi
+
+            echo "Done! Extracted ISO folder is \""$output_dir"/"$output_base_name_without_extension"."$input_extension"\"."
+
         else # straight ISO
+
             if [ "$EUID" != 0 ]; then
                 echo "Info: Root privilages are required to ensure success of burn"
                 sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$1"
@@ -440,76 +543,103 @@ if [ "$mode" == "2" ]; then # burn as-is
                 cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$1"
             fi
         fi
+
     else # CD
-        if [[ $multiple_files -gt 0 ]]; then # Did come from compressed archive
+
+        if [[ $bin_file_count -gt 0 ]]; then # Did come from compressed archive.
             cd "$output_parent_directory"/"$output_target_directory"
         else
             burn_dir=$(dirname "$1")
             cd "$burn_dir"
         fi
+
+        update_edc_ecc
         
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
             # The env command is used here becaue sudo context looses our custom path. We need to do nothing if already root.
-            if [ "$raw_enabled" == "yes" ]; then
-                sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
-            else
-                # So --driver generic-mmc is the default, it doesn't need to be specified.
-                sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --swap --eject -n "$base_cue_file"
-            fi
+            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
         else
-            if [ "$raw_enabled" == "yes" ]; then
-                cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
-            else
-                # So --driver generic-mmc is the default, it doesn't need to be specified.
-                cdrdao write --device "$burner" --speed $cd_burn_speed --swap --eject -n "$base_cue_file"
-            fi
+            cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
+        fi
+
+        if [[ $bin_file_count -gt 0 ]]; then # Did come from compressed archive.
+            echo "Done! Extracted BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"\"."
         fi
     fi
 
 # Burn Patched
-elif [ "$mode" == "4" ]; then # burn esr
+elif [ "$mode" = "4" ]; then # burn esr
+
     if [ "$EUID" != 0 ]; then
         echo "Info: Root privilages are required to ensure success of burn"
         sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
     else
        cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"
     fi
-elif [ "$mode" == "6" ]; then # burn master disc    
+
+    echo "Done! ESR patched ISO file is \""$output_dir"/"$output_base_name_without_extension"_ESR."$input_extension"\"."
+
+elif [ "$mode" = "6" ]; then # burn master disc    
+
     if [ -z "$data_track" ]; then # Master Disc is DVD
+
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
             sudo env PATH=$PATH cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
         else
             cdrecord -v dev="$burner" --speed=$dvd_burn_speed --eject "$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"
         fi
+
+        echo "Done! Master Disc patched ISO file is \""$output_dir"/"$output_base_name_without_extension"_MD."$input_extension"\"."
+
     else # Master Disc is CD
         cd "$output_parent_directory"/"$output_target_directory"_MD # CDRDAO is incapable of finding bin files relative to the cue when not in the same working directory
 
         if [ "$EUID" != 0 ]; then
             echo "Info: Root privilages are required to ensure success of burn"
-            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
         else
-            cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+            cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
         fi
+        
+        echo "Done! Master Disc patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_MD\"."
     fi
-elif [ "$mode" == "8" ]; then # LibCrypt is CD
+
+elif [ "$mode" = "8" ]; then # LibCrypt is CD
     cd "$output_parent_directory"/"$output_target_directory"_LCP # CDRDAO is incapable of finding bin files relative to the cue when not in the same working directory
 
     if [ "$EUID" != 0 ]; then
         echo "Info: Root privilages are required to ensure success of burn"
-        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
     else
-        cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
     fi
 
-elif [ "$mode" == "10" ]; then # PSX80MP is CD
+    echo "Done! LibCrypt patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_LCP\"."
+
+elif [ "$mode" = "10" ]; then # PSX80MP is CD
     cd "$output_parent_directory"/"$output_target_directory"_PSX80MP # CDRDAO is incapable of finding bin files relative to the cue when not in the same working directory
 
     if [ "$EUID" != 0 ]; then
         echo "Info: Root privilages are required to ensure success of burn"
-        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
     else
-        cdrdao write --device "$burner" --speed $cd_burn_speed --driver generic-mmc-raw --swap --eject -n "$base_cue_file"
+        cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
     fi
+
+    echo "Done! PSX80MP patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_PSX80MP\"."
+
+elif [ "$mode" = "12" ]; then # PSX Undither is CD
+    cd "$output_parent_directory"/"$output_target_directory"_PSXUND # CDRDAO is incapable of finding bin files relative to the cue when not in the same working directory
+
+    if [ "$EUID" != 0 ]; then
+        echo "Info: Root privilages are required to ensure success of burn"
+        sudo env PATH=$PATH cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
+    else
+        cdrdao write --device "$burner" --speed $cd_burn_speed --driver $driver --swap --eject -n "$base_cue_file"
+    fi
+
+    echo "Done! PSX Undither patched BIN/CUE folder is \""$output_parent_directory"/"$output_target_directory"_PSXUND\"."
+
 fi

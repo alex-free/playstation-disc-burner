@@ -22,3 +22,9 @@
 [submodule "edcre"]
 	path = edcre
 	url = https://github.com/alex-free/edcre
+[submodule "psx-undither"]
+	path = psx-undither
+	url = https://github.com/alex-free/psx-undither
+[submodule "pops2cue"]
+	path = pops2cue
+	url = https://github.com/bucanero/pops2cue

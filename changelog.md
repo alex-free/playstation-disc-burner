@@ -1,5 +1,33 @@
 # [PlayStation Disc Burner](readme.md) -> Changelog
 
+## v1.0.4 (9/27/2025)
+
+*   [playstation-disc-burner-v1.0.4-x86\_64](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.4/playstation-disc-burner-v1.0.4-x86_64.zip) _Portable Release For x86\_64 Linux_.
+
+---------------------------
+
+Changes:
+
+* Updated [EDCRE](https://github.com/alex-free/edcre) to version 1.1.0.
+
+* Updated [Libcrypt Patcher](https://github.com/alex-free/libcrypt-patcher) to version 1.0.9.
+
+* Updated [PS2 Master Disc Patcher](https://www.psx-place.com/threads/playstation-2-master-disc-patcher-for-mechapwn.36547/page-3#post-409346) to v1.0.6.
+
+* Updated [P7zip-zstd](https://github.com/p7zip-project/p7zip) to git commit 6819e2dc1917e1267babddc6391cea56ead7123d.
+
+* Implemented fixes for an issue where if you [symlink](https://github.com/alex-free/playstation-disc-burner/pull/2) `psdb` to i.e. `/usr/local/bin/psdb` thanks to [brkzlr](https://github.com/brkzlr). Since it had been over a year and I had more plans on how to re-archeticutre the current `psdb` to work under such conditions, I took inspirations/code changes from his original pull request and re-integrated it into the v1.0.4 source tree. But they did point out this issue first and provided fixes which I built upon on v1.0.4 nearly a year later so many thanks to them.
+
+* New default burning mode is **non-RAW**. This change has happened because [_many_](https://gbatemp.net/threads/do-modern-burners-cds-make-lower-quality-ps1-backups.628708/page-12#post-10710761) burners do not support RAW burning mode, and only a [small](https://github.com/alex-free/tonyhax/blob/master/anti-piracy-bypass.md#edc) amount of PSX games require it. **The RAW burning mode can be enabled by specifying `psdb -r yes` to burn such games. I recommend to do this if your burner works with RAW mode. If you have issues burning discs in RAW mode, you can specify `pdsb -r no` to disable RAW mode.**
+
+* Changed how to specify a custom burner config. Instead of i.e. `psdb -burner /dev/sr1`, do `psdb -b /dev/sr1`. This is still an "advanced" feature and `psdb` will find the default burner by default in almost all cases (which is normally `/dev/sr0`).
+
+* Re-compiled the portable build. This fixes [issues](https://github.com/alex-free/playstation-disc-burner/issues/7#issue-3348980745) with Linux distros using GLIB 2.34 which can't load the included STATIC ld loader. Really strange why this ever became an issue.
+
+* Mandated GCC/G++ 13 be used for compilation since cdrtools is broken on GCC 14+.
+
+* Improved build system.
+
 ## v1.0.3 (8/7/2024)
 
 *   [playstation-disc-burner-v1.0.3-i686](https://github.com/alex-free/playstation-disc-burner/releases/download/v1.0.3/playstation-disc-burner-v1.0.3-i686.zip) _Portable Release For i686 Linux (x86 32 bit Pentium or better)_.
